@@ -43,6 +43,14 @@ export const insertUser = async (user: typeof schema.users.$inferInsert) => {
   return db.insert(schema.users).values(user).returning();
 };
 
+export const getLatestMention = async () => {
+  return db
+    .select()
+    .from(schema.mentions)
+    .orderBy(desc(schema.mentions.createdAt))
+    .limit(1);
+};
+
 export const upsertUser = async (user: typeof schema.users.$inferInsert) => {
   return db
     .insert(schema.users)
@@ -144,3 +152,4 @@ export const markJobAsFailed = async (jobId: string) => {
     status: 'failed',
   });
 };
+

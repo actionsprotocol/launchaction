@@ -13,6 +13,7 @@ export const mentions = pgTable('mentions', {
   userId: varchar('user_id', { length: 256 }).notNull(),
   createdAt: timestamp('created_at').notNull(),
   text: text('text').notNull(),
+  handled: boolean('handled').notNull().default(false),
 });
 
 export const users = pgTable('users', {
