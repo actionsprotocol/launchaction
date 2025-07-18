@@ -39,16 +39,38 @@ export const getAllMentions = async () => {
   return db.select().from(schema.mentions);
 };
 
-export const insertUser = async (user: typeof schema.users.$inferInsert) => {
-  return db.insert(schema.users).values(user).returning();
-};
-
 export const getLatestMention = async () => {
   return db
     .select()
     .from(schema.mentions)
     .orderBy(desc(schema.mentions.createdAt))
     .limit(1);
+};
+
+export const getUnhandledMentions = async (limit?: number) => {
+  const query = db
+    .select()
+    .from(schema.mentions)
+    .where(eq(schema.mentions.handled, false))
+    .orderBy(schema.mentions.createdAt);
+
+  if (limit) {
+    return query.limit(limit);
+  }
+
+  return query;
+};
+
+export const markMentionAsHandled = async (tweetId: string) => {
+  return db
+    .update(schema.mentions)
+    .set({ handled: true })
+    .where(eq(schema.mentions.tweetId, tweetId))
+    .returning();
+};
+
+export const insertUser = async (user: typeof schema.users.$inferInsert) => {
+  return db.insert(schema.users).values(user).returning();
 };
 
 export const upsertUser = async (user: typeof schema.users.$inferInsert) => {
