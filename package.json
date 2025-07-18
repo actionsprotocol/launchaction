@@ -1,8 +1,8 @@
 {
-  "name": "agent-twitter-client",
-  "description": "A twitter client for agents",
+  "name": "launchaction",
+  "description": "@launchaction X bot",
   "keywords": [],
-  "version": "0.0.18",
+  "version": "0.0.1",
   "main": "dist/default/cjs/index.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
@@ -33,14 +33,10 @@
     "db:up": "drizzle-kit up"
   },
   "dependencies": {
-    "@ai-sdk/google": "^1.1.16",
-    "@ai-sdk/openai": "1.0.6",
     "@fastify/cors": "^9.0.1",
     "@roamhq/wrtc": "^0.8.0",
     "@sinclair/typebox": "^0.32.20",
-    "@solana/spl-token": "^0.4.12",
     "@solana/web3.js": "^1.98.0",
-    "ai": "^4.1.45",
     "drizzle-orm": "^0.39.3",
     "fastify": "^4.26.2",
     "headers-polyfill": "^3.1.2",
