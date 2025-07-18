@@ -1,5 +1,6 @@
+import 'dotenv/config';
+import { and, desc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq, desc } from 'drizzle-orm';
 import * as schema from './schema';
 
 export const db = drizzle(process.env.POSTGRES_URL!);
@@ -116,6 +117,16 @@ export const insertJob = async (job: typeof schema.jobs.$inferInsert) => {
   return db.insert(schema.jobs).values(job).returning();
 };
 
+export const createJob = async (type: schema.JobType) => {
+  const { randomUUID } = await import('crypto');
+  const [newJob] = await insertJob({
+    id: randomUUID(),
+    type,
+    status: 'pending',
+  });
+  return newJob;
+};
+
 export const updateJob = async (
   jobId: string,
   updates: Partial<typeof schema.jobs.$inferInsert>,
@@ -172,6 +183,39 @@ export const markJobAsCompleted = async (
 export const markJobAsFailed = async (jobId: string) => {
   return updateJob(jobId, {
     status: 'failed',
+  });
+};
+
+export const rescheduleJobs = async (type: schema.JobType) => {
+  return db
+    .update(schema.jobs)
+    .set({ status: 'pending' })
+    .where(and(eq(schema.jobs.type, type), eq(schema.jobs.status, 'running')));
+};
+
+export const claimNextJob = async (type: schema.JobType) => {
+  return await db.transaction(async (tx) => {
+    const [job] = await tx
+      .select()
+      .from(schema.jobs)
+      .where(and(
+        eq(schema.jobs.status, 'pending'),
+        eq(schema.jobs.type, type)
+      ))
+      .orderBy(schema.jobs.createdAt)
+      .limit(1);
+
+    if (!job) {
+      return await createJob(type);
+    }
+
+    const [updatedJob] = await tx
+      .update(schema.jobs)
+      .set({ status: 'running', startedAt: new Date() })
+      .where(eq(schema.jobs.id, job.id))
+      .returning();
+
+    return updatedJob;
   });
 };
 

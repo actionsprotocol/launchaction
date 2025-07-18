@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Job } from '../db/schema';
 import { 
   markJobAsStarted, 
@@ -8,7 +9,6 @@ import {
   upsertUser
 } from '../db';
 import { fetchUserMentionsTimeline } from '../twitter';
-import { ApiResponseError } from 'twitter-api-v2';
 
 export async function performSearchMentionsJob(job: Job, userId: string) {
   try {
@@ -56,24 +56,7 @@ export async function performSearchMentionsJob(job: Job, userId: string) {
       mentionsFound: mentions.length,
     };
   } catch (error) {
+    console.error(error);
     await markJobAsFailed(job.id);
-    
-    if (error instanceof ApiResponseError && error.rateLimitError && error.rateLimit) {
-      await markJobAsCompleted(
-        job.id,
-        0,
-        error.rateLimit.remaining,
-        new Date(error.rateLimit.reset * 1000)
-      );
-      
-      return {
-        success: false,
-        error: 'Rate limit hit',
-        rateLimitReset: new Date(error.rateLimit.reset * 1000),
-        rateLimitRemaining: error.rateLimit.remaining,
-      };
-    }
-    
-    throw error;
   }
 }

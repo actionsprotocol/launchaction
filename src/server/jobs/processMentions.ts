@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Job } from '../db/schema';
 import { 
   markJobAsStarted, 

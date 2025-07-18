@@ -6,7 +6,6 @@ export async function fetchUserMentionsTimeline(
   sinceId?: string
 ) {
   const response = await twitterClient.v2.userMentionTimeline(userId, {
-    'tweet.fields': ['id', 'text', 'created_at', 'author_id'],
     'user.fields': ['id', 'name', 'username', 'verified', 'profile_image_url', 'public_metrics'],
     expansions: ['author_id'],
     max_results: limit,
