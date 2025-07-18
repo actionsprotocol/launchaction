@@ -105,7 +105,7 @@ export const getJobById = async (jobId: string) => {
     .limit(1);
 };
 
-export const getLatestJobByType = async (type: string) => {
+export const getLatestJobByType = async (type: schema.JobType) => {
   return db
     .select()
     .from(schema.jobs)

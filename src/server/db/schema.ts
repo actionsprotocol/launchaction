@@ -5,6 +5,7 @@ import {
   varchar,
   boolean,
   integer,
+  pgEnum,
 } from 'drizzle-orm/pg-core';
 
 export const mentions = pgTable('mentions', {
@@ -25,10 +26,17 @@ export const users = pgTable('users', {
     .default(0),
 });
 
+export const jobTypeEnum = pgEnum('job_type', ['search_mentions', 'process_mentions']);
+export const jobStatusEnum = pgEnum('job_status', ['pending', 'running', 'completed', 'failed']);
+export type JobType = typeof jobTypeEnum.enumValues[number];
+export type JobStatus = typeof jobStatusEnum.enumValues[number];
+export type Job = typeof jobs.$inferSelect;
+export type NewJob = typeof jobs.$inferInsert;
+
 export const jobs = pgTable('jobs', {
   id: varchar('id', { length: 256 }).primaryKey(),
-  type: varchar('type', { length: 50 }).notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  type: jobTypeEnum('type').notNull(),
+  status: jobStatusEnum('status').notNull().default('pending'),
   startedAt: timestamp('started_at'),
   rateLimitRemaining: integer('rate_limit_remaining'),
   rateLimitReset: timestamp('rate_limit_reset'),
