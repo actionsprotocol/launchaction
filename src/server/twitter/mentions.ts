@@ -7,7 +7,8 @@ export async function fetchUserMentionsTimeline(
 ) {
   const response = await twitterAppClient.v2.userMentionTimeline(userId, {
     'user.fields': ['id', 'name', 'username', 'verified', 'profile_image_url', 'public_metrics'],
-    expansions: ['author_id'],
+    'tweet.fields': ['author_id', 'text', 'entities', 'referenced_tweets', 'in_reply_to_user_id', 'conversation_id'],
+    expansions: ['author_id', 'referenced_tweets.id', 'entities.mentions.username', 'in_reply_to_user_id'],
     max_results: limit,
     since_id: sinceId,
   });
@@ -23,20 +24,31 @@ export async function fetchUserMentionsTimeline(
 
   for (const tweet of response.tweets) {
     const author = usersMap.get(tweet.author_id);
-    mentions.push({
-      tweetId: tweet.id,
-      userId: tweet.author_id,
-      createdAt: new Date(tweet.created_at!),
-      text: tweet.text,
-      user: {
-        id: author.id,
-        name: author.name,
-        username: author.username,
-        verified: author.verified || false,
-        profileImageUrl: author.profile_image_url,
-        verifiedFollowersCount: author.public_metrics?.followers_count || 0,
-      },
-    });
+    
+    let isDirectMention = false;
+    
+    if (tweet.entities?.mentions) {
+      isDirectMention = tweet.entities.mentions.some(mention =>
+        mention.username.toLowerCase() === 'launchaction'
+      );
+    }
+
+    if (isDirectMention) {
+      mentions.push({
+        tweetId: tweet.id,
+        userId: tweet.author_id,
+        createdAt: new Date(tweet.created_at!),
+        text: tweet.text,
+        user: {
+          id: author.id,
+          name: author.name,
+          username: author.username,
+          verified: author.verified || false,
+          profileImageUrl: author.profile_image_url,
+          verifiedFollowersCount: author.public_metrics?.followers_count || 0,
+        },
+      });
+    }
   }
 
   return mentions;
