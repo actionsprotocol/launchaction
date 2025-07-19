@@ -1,11 +1,11 @@
-import { twitterClient } from './client';
+import { twitterAppClient } from './client';
 
 export async function fetchUserMentionsTimeline(
   userId: string,
   limit?: number,
   sinceId?: string
 ) {
-  const response = await twitterClient.v2.userMentionTimeline(userId, {
+  const response = await twitterAppClient.v2.userMentionTimeline(userId, {
     'user.fields': ['id', 'name', 'username', 'verified', 'profile_image_url', 'public_metrics'],
     expansions: ['author_id'],
     max_results: limit,
