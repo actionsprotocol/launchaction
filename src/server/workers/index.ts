@@ -2,7 +2,7 @@ import { rescheduleJobs, claimNextJob } from '../db';
 import { performSearchMentionsJob, performProcessMentionsJob } from '../jobs';
 
 async function setupSearchMentionsWorker(userId: string) {
-  const interval = 1000 * 60 * 2;
+  const interval = 1000 * 60; // Every minute
 
   await rescheduleJobs('search_mentions');
 
@@ -23,7 +23,7 @@ async function setupSearchMentionsWorker(userId: string) {
 }
 
 async function setupProcessMentionsWorker() {
-  const interval = 1000 * 30;
+  const interval = 1000 * 30; // Every 30sec
 
   await rescheduleJobs('process_mentions');
 
