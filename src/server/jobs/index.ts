@@ -1,2 +1,2 @@
 export { performSearchMentionsJob } from './searchMentions';
-export { performProcessMentionsJob } from './processMentions'; 
+export { performProcessMentionsJob } from './processMentions';

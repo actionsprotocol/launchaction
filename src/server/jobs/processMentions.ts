@@ -42,4 +42,4 @@ export async function performProcessMentionsJob(job: Job) {
     await markJobAsFailed(job.id);
     throw error;
   }
-} 
+}

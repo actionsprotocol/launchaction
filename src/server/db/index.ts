@@ -153,4 +153,3 @@ export const claimNextJob = async (type: schema.JobType) => {
     return updatedJob;
   });
 };
-

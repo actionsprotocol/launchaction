@@ -6,4 +6,4 @@ export async function replyToTweet(
 ) {
   const response = await twitterClient.v2.reply(text, tweetId);
   return response.data;
-} 
+}
