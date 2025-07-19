@@ -12,11 +12,6 @@ export async function replyToTweet(
     );
   }
 
-  try {
-    const response = await twitterUserClient.v2.reply(text, tweetId);
-    return response.data;
-  } catch (error) {
-    console.error('Failed to reply to tweet:', error);
-    throw error;
-  }
+  const response = await twitterUserClient.v2.reply(text, tweetId);
+  return response.data;
 }

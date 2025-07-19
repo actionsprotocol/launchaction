@@ -1,42 +1,97 @@
 import 'dotenv/config';
-import { Job } from '../db/schema';
-import { 
-  markJobAsStarted, 
-  markJobAsCompleted, 
-  markJobAsFailed,
+import { ApiResponseError } from 'twitter-api-v2';
+import {
   getUnhandledMentions,
-  markMentionAsHandled
+  markJobAsCompleted,
+  markJobAsFailed,
+  markJobAsStarted,
+  markMentionAsHandled,
 } from '../db';
+import { Job } from '../db/schema';
+import { replyToTweet } from '../twitter';
 
-function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+interface RateLimitState {
+  remaining?: number;
+  resetAt?: Date;
 }
 
-export async function performProcessMentionsJob(job: Job) {
-  try {
-    await markJobAsStarted(job.id);
+interface ProcessingResult {
+  success: boolean;
+  processedCount: number;
+  totalUnhandled: number;
+  rateLimitRemaining?: number;
+  rateLimitReset?: Date;
+}
 
-    const unhandledMentions = await getUnhandledMentions(50);
+async function createPoolFromMention(mention: { tweetId: string }): Promise<string> {
+  return `https://example.com/pool/${mention.tweetId}`;
+}
+
+function isRateLimitExceeded(state: RateLimitState): boolean {
+  if (state.remaining === undefined || state.remaining > 0) return false;
+  if (!state.resetAt) return true;
+  return new Date() < state.resetAt;
+}
+
+function extractRateLimitFromError(error: unknown): RateLimitState | null {
+  if (!(error instanceof ApiResponseError) || !error.rateLimitError || !error.rateLimit) {
+    return null;
+  }
+  
+  return {
+    remaining: error.rateLimit.remaining,
+    resetAt: new Date(error.rateLimit.reset * 1000)
+  };
+}
+
+export async function performProcessMentionsJob(job: Job): Promise<ProcessingResult> {
+  await markJobAsStarted(job.id);
+
+  try {
+    const mentions = await getUnhandledMentions(50);
+    const rateLimit: RateLimitState = {
+      remaining: job.rateLimitRemaining ?? undefined,
+      resetAt: job.rateLimitReset ?? undefined
+    };
     
     let processedCount = 0;
 
-    for (const mention of unhandledMentions) {
-      await delay(300);
+    for (const mention of mentions) {
+      if (isRateLimitExceeded(rateLimit)) break;
       
-      await markMentionAsHandled(mention.tweetId);
-      
-      processedCount++;
+      try {
+        const poolUrl = await createPoolFromMention(mention);
+        await replyToTweet(mention.tweetId, `Your pool is ready: ${poolUrl}`);
+        await markMentionAsHandled(mention.tweetId);
+        
+        processedCount++;
+        if (rateLimit.remaining !== undefined) {
+          rateLimit.remaining--;
+        }
+      } catch (error) {
+        const limitFromError = extractRateLimitFromError(error);
+        if (limitFromError) {
+          Object.assign(rateLimit, limitFromError);
+          break;
+        }
+        await markJobAsFailed(job.id);
+        console.error(`Failed to process mention ${mention.tweetId}:`, error);
+      }
     }
 
     await markJobAsCompleted(
       job.id,
-      processedCount
+      processedCount,
+      rateLimit.remaining,
+      rateLimit.resetAt
     );
 
     return {
       success: true,
       processedCount,
-      totalUnhandled: unhandledMentions.length,
+      totalUnhandled: mentions.length,
+      rateLimitRemaining: rateLimit.remaining,
+      rateLimitReset: rateLimit.resetAt
     };
   } catch (error) {
     await markJobAsFailed(job.id);
