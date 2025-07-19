@@ -14,6 +14,7 @@ export const mentions = pgTable('mentions', {
   createdAt: timestamp('created_at').notNull(),
   text: text('text').notNull(),
   handled: boolean('handled').notNull().default(false),
+  handledAt: timestamp('handled_at'),
 });
 
 export const users = pgTable('users', {
@@ -39,8 +40,6 @@ export const jobs = pgTable('jobs', {
   type: jobTypeEnum('type').notNull(),
   status: jobStatusEnum('status').notNull().default('pending'),
   startedAt: timestamp('started_at'),
-  rateLimitRemaining: integer('rate_limit_remaining'),
-  rateLimitReset: timestamp('rate_limit_reset'),
   tweetsConsumed: integer('tweets_consumed').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });

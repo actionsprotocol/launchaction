@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 
@@ -44,10 +44,24 @@ export const getUnhandledMentions = async (limit?: number) => {
   return query;
 };
 
+export const getHandledMentions = async (limit?: number) => {
+  const query = db
+    .select()
+    .from(schema.mentions)
+    .where(eq(schema.mentions.handled, true))
+    .orderBy(schema.mentions.createdAt);
+
+  if (limit) {
+    return query.limit(limit);
+  }
+
+  return query;
+};
+
 export const markMentionAsHandled = async (tweetId: string) => {
   return db
     .update(schema.mentions)
-    .set({ handled: true })
+    .set({ handled: true, handledAt: new Date() })
     .where(eq(schema.mentions.tweetId, tweetId))
     .returning();
 };
@@ -104,14 +118,10 @@ export const markJobAsStarted = async (jobId: string) => {
 export const markJobAsCompleted = async (
   jobId: string,
   tweetsConsumed: number,
-  rateLimitRemaining?: number,
-  rateLimitReset?: Date,
 ) => {
   return updateJob(jobId, {
     status: 'completed',
     tweetsConsumed,
-    rateLimitRemaining,
-    rateLimitReset,
   });
 };
 

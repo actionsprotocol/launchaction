@@ -25,7 +25,7 @@ export async function performSearchMentionsJob(job: Job, userId: string) {
 
     let tweetsConsumed = 0;
 
-    for (const mention of mentions) {
+    for (const mention of mentions.mentions) {
       await upsertUser({
         id: mention.user.id,
         name: mention.user.name,
@@ -53,7 +53,7 @@ export async function performSearchMentionsJob(job: Job, userId: string) {
     return {
       success: true,
       tweetsConsumed,
-      mentionsFound: mentions.length,
+      mentionsFound: mentions.mentions.length,
     };
   } catch (error) {
     console.error(error);

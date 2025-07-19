@@ -12,6 +12,6 @@ export async function replyToTweet(
     );
   }
 
-  const response = await twitterUserClient.v2.reply(text, tweetId);
+  const response = await twitterUserClient.readWrite.v2.reply(text, tweetId);
   return response.data;
 }

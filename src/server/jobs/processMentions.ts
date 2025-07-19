@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { ApiResponseError } from 'twitter-api-v2';
 import {
+  getHandledMentions,
   getUnhandledMentions,
   markJobAsCompleted,
   markJobAsFailed,
@@ -10,70 +10,36 @@ import {
 import { Job } from '../db/schema';
 import { replyToTweet } from '../twitter';
 
-interface RateLimitState {
-  remaining?: number;
-  resetAt?: Date;
-}
-
 interface ProcessingResult {
   success: boolean;
   processedCount: number;
-  totalUnhandled: number;
-  rateLimitRemaining?: number;
-  rateLimitReset?: Date;
 }
 
-async function createPoolFromMention(mention: { tweetId: string }): Promise<string> {
-  return `https://example.com/pool/${mention.tweetId}`;
-}
-
-function isRateLimitExceeded(state: RateLimitState): boolean {
-  if (state.remaining === undefined || state.remaining > 0) return false;
-  if (!state.resetAt) return true;
-  return new Date() < state.resetAt;
-}
-
-function extractRateLimitFromError(error: unknown): RateLimitState | null {
-  if (!(error instanceof ApiResponseError) || !error.rateLimitError || !error.rateLimit) {
-    return null;
-  }
-  
-  return {
-    remaining: error.rateLimit.remaining,
-    resetAt: new Date(error.rateLimit.reset * 1000)
-  };
-}
+// Twitter allows to send 100 tweets per 24h.
+const MAX_REPLIES_PER_24H = 100;
 
 export async function performProcessMentionsJob(job: Job): Promise<ProcessingResult> {
   await markJobAsStarted(job.id);
 
   try {
-    const mentions = await getUnhandledMentions(50);
-    const rateLimit: RateLimitState = {
-      remaining: job.rateLimitRemaining ?? undefined,
-      resetAt: job.rateLimitReset ?? undefined
-    };
-    
+    const unhandledMentions = await getUnhandledMentions(50);
+    const repliesSentToday = await numberOfSentRepliesToday(MAX_REPLIES_PER_24H);
+    const repliesLeft = MAX_REPLIES_PER_24H - repliesSentToday;
+
     let processedCount = 0;
 
-    for (const mention of mentions) {
-      if (isRateLimitExceeded(rateLimit)) break;
-      
+    for (const mention of unhandledMentions) {
+      if (processedCount + 1 == repliesLeft) {
+        break;
+      }
+
       try {
-        const poolUrl = await createPoolFromMention(mention);
-        await replyToTweet(mention.tweetId, `Your pool is ready: ${poolUrl}`);
+        // TODO
+        await replyToTweet(mention.tweetId, `hello`);
         await markMentionAsHandled(mention.tweetId);
         
         processedCount++;
-        if (rateLimit.remaining !== undefined) {
-          rateLimit.remaining--;
-        }
       } catch (error) {
-        const limitFromError = extractRateLimitFromError(error);
-        if (limitFromError) {
-          Object.assign(rateLimit, limitFromError);
-          break;
-        }
         await markJobAsFailed(job.id);
         console.error(`Failed to process mention ${mention.tweetId}:`, error);
       }
@@ -82,19 +48,25 @@ export async function performProcessMentionsJob(job: Job): Promise<ProcessingRes
     await markJobAsCompleted(
       job.id,
       processedCount,
-      rateLimit.remaining,
-      rateLimit.resetAt
     );
 
     return {
       success: true,
       processedCount,
-      totalUnhandled: mentions.length,
-      rateLimitRemaining: rateLimit.remaining,
-      rateLimitReset: rateLimit.resetAt
     };
   } catch (error) {
     await markJobAsFailed(job.id);
     throw error;
   }
+}
+
+async function numberOfSentRepliesToday(maxReplies: number): Promise<number> {
+  const sentReplies = await getHandledMentions(maxReplies);
+  
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recentReplies = sentReplies.filter(mention => 
+    mention.handledAt && new Date(mention.handledAt) > twentyFourHoursAgo
+  );
+  
+  return recentReplies.length;
 }
